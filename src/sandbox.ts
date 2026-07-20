@@ -1,5 +1,5 @@
 import {
-    LambdaMicroVMsClient,
+    LambdaMicrovmsClient,
     RunMicrovmCommand,
     GetMicrovmCommand,
     TerminateMicrovmCommand,
@@ -10,8 +10,8 @@ import {
 export interface SandboxCreateOptions {
     apiKey?: string;
     timeoutMs?: number;
-    cpu?: number;        // vCPU baseline allocation (e.g. 1, 2)
-    memoryMB?: number;   // RAM baseline allocation in MiB (e.g. 2048, 4096)
+    cpu?: number;        // vCPU baseline allocation
+    memoryMB?: number;   // RAM baseline allocation in MiB
     envs?: Record<string, string>;
 }
 
@@ -34,7 +34,7 @@ export interface SandboxMetrics {
 }
 
 export class Sandbox {
-    private static client = new LambdaMicroVMsClient({});
+    private static client = new LambdaMicrovmsClient({});
 
     constructor(
         public readonly sandboxId: string,
@@ -47,12 +47,12 @@ export class Sandbox {
      * Connect to an existing active or suspended MicroVM sandbox session
      */
     static async connect(sandboxId: string, options: { apiKey?: string } = {}): Promise<Sandbox> {
-        const info = await this.client.send(new GetMicrovmCommand({ MicrovmId: sandboxId }));
+        const info = await this.client.send(new GetMicrovmCommand({ microvmId: sandboxId }));
 
         // Generate a fresh short-lived JWE auth token for the data-plane endpoint
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
-            MicrovmId: sandboxId,
-            ValidityInSeconds: 3600
+            microvmId: sandboxId,
+            validityInSeconds: 3600
         }));
 
         return new Sandbox(
@@ -73,20 +73,20 @@ export class Sandbox {
         const timeoutMs = options.timeoutMs || 60_000;
 
         const runRes = await this.client.send(new RunMicrovmCommand({
-            ImageName: blueprintRef,
-            BaselineConfig: {
+            imageName: blueprintRef,
+            baselineConfig: {
                 vCPU: options.cpu || 1,
-                MemoryMiB: options.memoryMB || 2048
+                memoryMiB: options.memoryMB || 2048
             },
-            IdlePolicy: {
-                AutoSuspendTimeoutInSeconds: Math.floor(timeoutMs / 1000)
+            idlePolicy: {
+                autoSuspendTimeoutInSeconds: Math.floor(timeoutMs / 1000)
             },
-            EnvironmentVariables: options.envs
+            environmentVariables: options.envs
         }));
 
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
-            MicrovmId: runRes.MicrovmId!,
-            ValidityInSeconds: 3600
+            microvmId: runRes.MicrovmId!,
+            validityInSeconds: 3600
         }));
 
         return new Sandbox(
@@ -166,7 +166,7 @@ export class Sandbox {
      * Get low-level MicroVM metadata directly from AWS Control Plane
      */
     async getInfo(): Promise<GetMicrovmResponse> {
-        return Sandbox.client.send(new GetMicrovmCommand({ MicrovmId: this.sandboxId }));
+        return Sandbox.client.send(new GetMicrovmCommand({ microvmId: this.sandboxId }));
     }
 
     /**
@@ -180,6 +180,6 @@ export class Sandbox {
      * Immediately terminate the MicroVM sandbox instance
      */
     async kill(): Promise<void> {
-        await Sandbox.client.send(new TerminateMicrovmCommand({ MicrovmId: this.sandboxId }));
+        await Sandbox.client.send(new TerminateMicrovmCommand({ microvmId: this.sandboxId }));
     }
 }

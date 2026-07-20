@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { LambdaMicroVMsClient, CreateMicrovmImageCommand } from "@aws-sdk/client-lambda-microvms";
+import { LambdaMicrovmsClient, CreateMicrovmImageCommand } from "@aws-sdk/client-lambda-microvms";
 
 export interface BlueprintBuildConfig {
     apiKey?: string;
@@ -13,7 +13,7 @@ export interface BlueprintBuildConfig {
 
 export class Blueprint {
     private static s3 = new S3Client({});
-    private static microVmClient = new LambdaMicroVMsClient({});
+    private static microVmClient = new LambdaMicrovmsClient({});
 
     constructor(public baseBlueprintName: string = "bridgeside") {}
 
@@ -59,10 +59,10 @@ export class Blueprint {
 
         // 2. Trigger AWS snapshot pre-initialization build
         const imageRes = await this.microVmClient.send(new CreateMicrovmImageCommand({
-            Name: blueprintName,
-            CodeArtifact: { Uri: `s3://${bucket}/${s3Key}` },
-            BuildRoleArn: config.buildRoleArn || process.env.MICROVM_BUILD_ROLE_ARN,
-            BaseImageArn: "arn:aws:lambda:us-east-1:aws:microvm-image:al2023-1"
+            name: blueprintName,
+            codeArtifact: { uri: `s3://${bucket}/${s3Key}` },
+            buildRoleArn: config.buildRoleArn || process.env.MICROVM_BUILD_ROLE_ARN,
+            baseImageArn: "arn:aws:lambda:us-east-1:aws:microvm-image:al2023-1"
         }));
 
         if (config.onBuildLogs) {
