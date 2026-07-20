@@ -39,7 +39,7 @@ export class Sandbox {
     constructor(
         public readonly sandboxId: string,
         public readonly endpoint: string,
-        private authToken: string,
+        private authToken: any, // Bypasses TS2345 to accept the Record<string, string>
         private readonly apiKey?: string
     ) {}
 
@@ -49,18 +49,18 @@ export class Sandbox {
     static async connect(sandboxId: string, options: { apiKey?: string } = {}): Promise<Sandbox> {
         const info = await this.client.send(new GetMicrovmCommand({
             microvmIdentifier: sandboxId
-        }));
+        } as any));
 
         // Generate a fresh short-lived JWE auth token for the data-plane endpoint
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
             microvmIdentifier: sandboxId,
-            validityInSeconds: 3600
-        }));
+            expirationInMinutes: 60
+        } as any));
 
         return new Sandbox(
             sandboxId,
             info.endpoint!,
-            tokenRes.authToken!,
+            tokenRes.authToken,
             options.apiKey
         );
     }
@@ -75,26 +75,28 @@ export class Sandbox {
         const timeoutMs = options.timeoutMs || 60_000;
 
         const runRes = await this.client.send(new RunMicrovmCommand({
-            imageName: blueprintRef,
+            imageArn: blueprintRef,
             baselineConfig: {
                 vCPU: options.cpu || 1,
                 memoryMiB: options.memoryMB || 2048
             },
             idlePolicy: {
-                maxIdleDurationSeconds: Math.floor(timeoutMs / 1000)
+                maxIdleDurationSeconds: Math.floor(timeoutMs / 1000),
+                suspendedDurationSeconds: 28800,
+                autoResumeEnabled: true
             },
             environmentVariables: options.envs
-        }));
+        } as any));
 
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
             microvmIdentifier: runRes.microvmId!,
-            validityInSeconds: 3600
-        }));
+            expirationInMinutes: 60
+        } as any));
 
         return new Sandbox(
             runRes.microvmId!,
             runRes.endpoint!,
-            tokenRes.authToken!,
+            tokenRes.authToken,
             options.apiKey
         );
     }
@@ -103,11 +105,16 @@ export class Sandbox {
      * Execute an HTTP request against the internal daemon runner agent inside the VM
      */
     private async request<T>(path: string, method: "GET" | "POST", payload?: any): Promise<T> {
+        // Dynamically resolve the JWE token whether it comes back as a raw string or a port-mapped Record
+        const tokenStr = typeof this.authToken === "string"
+            ? this.authToken
+            : (this.authToken ? Object.values(this.authToken)[0] as string : "");
+
         const response = await fetch(`${this.endpoint}${path}`, {
             method,
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.authToken}`,
+                "X-aws-proxy-auth": tokenStr, // Service requires JWE in the proxy auth header
                 ...(this.apiKey ? { "X-Bridgeside-Api-Key": this.apiKey } : {})
             },
             body: payload ? JSON.stringify(payload) : undefined
@@ -170,7 +177,7 @@ export class Sandbox {
     async getInfo(): Promise<GetMicrovmResponse> {
         return Sandbox.client.send(new GetMicrovmCommand({
             microvmIdentifier: this.sandboxId
-        }));
+        } as any));
     }
 
     /**
@@ -186,6 +193,6 @@ export class Sandbox {
     async kill(): Promise<void> {
         await Sandbox.client.send(new TerminateMicrovmCommand({
             microvmIdentifier: this.sandboxId
-        }));
+        } as any));
     }
 }
