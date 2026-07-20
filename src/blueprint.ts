@@ -66,7 +66,7 @@ export class Blueprint {
         }));
 
         if (config.onBuildLogs) {
-            config.onBuildLogs(`[SDK] MicroVM Image creation started: ${imageRes.ImageArn}`);
+            config.onBuildLogs(`[SDK] MicroVM Image creation started: ${imageRes.imageArn}`);
         }
 
         return imageRes;

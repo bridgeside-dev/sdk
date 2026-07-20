@@ -47,18 +47,20 @@ export class Sandbox {
      * Connect to an existing active or suspended MicroVM sandbox session
      */
     static async connect(sandboxId: string, options: { apiKey?: string } = {}): Promise<Sandbox> {
-        const info = await this.client.send(new GetMicrovmCommand({ microvmId: sandboxId }));
+        const info = await this.client.send(new GetMicrovmCommand({
+            microvmIdentifier: sandboxId
+        }));
 
         // Generate a fresh short-lived JWE auth token for the data-plane endpoint
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
-            microvmId: sandboxId,
+            microvmIdentifier: sandboxId,
             validityInSeconds: 3600
         }));
 
         return new Sandbox(
             sandboxId,
-            info.EndpointUrl!,
-            tokenRes.AuthToken!,
+            info.endpoint!,
+            tokenRes.authToken!,
             options.apiKey
         );
     }
@@ -79,20 +81,20 @@ export class Sandbox {
                 memoryMiB: options.memoryMB || 2048
             },
             idlePolicy: {
-                autoSuspendTimeoutInSeconds: Math.floor(timeoutMs / 1000)
+                maxIdleDurationSeconds: Math.floor(timeoutMs / 1000)
             },
             environmentVariables: options.envs
         }));
 
         const tokenRes = await this.client.send(new CreateMicrovmAuthTokenCommand({
-            microvmId: runRes.MicrovmId!,
+            microvmIdentifier: runRes.microvmId!,
             validityInSeconds: 3600
         }));
 
         return new Sandbox(
-            runRes.MicrovmId!,
-            runRes.EndpointUrl!,
-            tokenRes.AuthToken!,
+            runRes.microvmId!,
+            runRes.endpoint!,
+            tokenRes.authToken!,
             options.apiKey
         );
     }
@@ -166,20 +168,24 @@ export class Sandbox {
      * Get low-level MicroVM metadata directly from AWS Control Plane
      */
     async getInfo(): Promise<GetMicrovmResponse> {
-        return Sandbox.client.send(new GetMicrovmCommand({ microvmId: this.sandboxId }));
+        return Sandbox.client.send(new GetMicrovmCommand({
+            microvmIdentifier: this.sandboxId
+        }));
     }
 
     /**
-     * Get host URL
+     * Get primary host URL for the sandbox MicroVM
      */
     getHost(): string {
-        return `${this.endpoint}`;
+        return this.endpoint;
     }
 
     /**
      * Immediately terminate the MicroVM sandbox instance
      */
     async kill(): Promise<void> {
-        await Sandbox.client.send(new TerminateMicrovmCommand({ microvmId: this.sandboxId }));
+        await Sandbox.client.send(new TerminateMicrovmCommand({
+            microvmIdentifier: this.sandboxId
+        }));
     }
 }
