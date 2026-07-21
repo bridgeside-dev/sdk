@@ -1,15 +1,35 @@
-// Core Classes
-export { Sandbox } from "./sandbox";
-export { Blueprint } from "./blueprint";
+export { BridgesideClient } from "./client.js"
+export type { BridgesideClientOptions } from "./client.js"
 
-// Types & Interfaces
-export type {
-    SandboxCreateOptions,
-    CommandRunOptions,
-    CommandResult,
-    SandboxMetrics
-} from "./sandbox";
+export { SandboxesClient } from "./resources/sandboxes.js"
+
+export {
+  BridgesideError,
+  AuthenticationError,
+  BadRequestError,
+  NotFoundError,
+  PaymentRequiredError,
+  RateLimitError,
+  APIError,
+  SandboxProvisioningError,
+} from "./errors.js"
 
 export type {
-    BlueprintBuildConfig
-} from "./blueprint";
+  SandboxState,
+  SandboxListState,
+  ComputeResources,
+  AllowRule,
+  NetworkPolicy,
+  OpencodeAgentConfig,
+  RepositoryRef,
+  ContextFile,
+  WorkloadSpec,
+  SandboxCreateRequest,
+  SandboxDetails,
+  SandboxCreateOptions,
+} from "./types.js"
+
+export {
+  DEFAULT_BASE_URL,
+  DEFAULT_WAIT_TIMEOUT_MS,
+} from "./types.js"

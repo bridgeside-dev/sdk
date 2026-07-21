@@ -1,7 +1,7 @@
 {
   "name": "@bridgeside/sdk",
   "version": "0.1.0",
-  "description": "Bridgeside TypeScript SDK for managing Firecracker agent sandboxes via AWS Lambda MicroVMs",
+  "description": "TypeScript SDK for the Bridgeside Control Plane API",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -19,17 +19,17 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rimraf dist"
   },
-  "dependencies": {
-    "@aws-sdk/client-lambda-microvms": "^3.0.0",
-    "@aws-sdk/client-s3": "^3.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.11.0",
     "rimraf": "^5.0.5",
     "tsup": "^8.0.2",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.1.1"
   },
   "publishConfig": {
     "access": "restricted"

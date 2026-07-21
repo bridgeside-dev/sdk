@@ -8,8 +8,4 @@ export default defineConfig({
     sourcemap: true,
     clean: true,
     minify: false,
-    external: [
-        "@aws-sdk/client-lambda-microvms",
-        "@aws-sdk/client-s3"
-    ]
 });
