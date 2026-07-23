@@ -1,39 +1,26 @@
-export type SandboxState = "PROVISIONING" | "RUNNING" | "SUSPENDED" | "TERMINATED"
+export type MicroVMState = "PROVISIONING" | "RUNNING" | "SUSPENDED" | "TERMINATED"
 
-export type SandboxListState = "PROVISIONING" | "RUNNING" | "SUSPENDED"
+export type MicroVMListState = "PROVISIONING" | "RUNNING" | "SUSPENDED"
 
 export interface ComputeResources {
-  cpu?: number
-  memoryMB?: number
-  timeoutMs?: number
+  cpu: number
+  memoryMB: number
+  timeoutMs: number
 }
 
-export interface NetworkPolicy {
-  allowRules?: AllowRule[]
-}
-
-export interface AllowRule {
-  domain?: string
-  port?: number
-}
-
-export interface SandboxCreateRequest {
+export interface MicroVMCreateRequest {
   resources: ComputeResources
   env?: Record<string, string>
-  networkPolicy?: NetworkPolicy
-  bootstrapScript?: string
-  metadata?: Record<string, string>
 }
 
-export interface SandboxDetails {
-  sandboxId: string
-  state: SandboxState
+export interface MicroVMDetails {
+  id: string
+  state: MicroVMState
+  endpoint?: string
   createdAt: string
-  resources: ComputeResources
-  metadata?: Record<string, string>
 }
 
-export interface SandboxCreateOptions {
+export interface MicroVMCreateOptions {
   wait?: boolean
   timeoutMs?: number
 }

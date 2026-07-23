@@ -1,5 +1,5 @@
 import { HttpRequester } from "./http.js"
-import { SandboxesClient } from "./resources/sandboxes.js"
+import { MicroVMsClient } from "./resources/microvms.js"
 import { DEFAULT_BASE_URL } from "./types.js"
 
 export interface BridgesideClientOptions {
@@ -10,7 +10,7 @@ export interface BridgesideClientOptions {
 
 export class BridgesideClient {
   private readonly http: HttpRequester
-  private _sandboxes?: SandboxesClient
+  private _microvms?: MicroVMsClient
 
   constructor(options: BridgesideClientOptions) {
     if (!options.apiKey) {
@@ -26,10 +26,10 @@ export class BridgesideClient {
     )
   }
 
-  get sandboxes(): SandboxesClient {
-    if (!this._sandboxes) {
-      this._sandboxes = new SandboxesClient(this.http)
+  get microvms(): MicroVMsClient {
+    if (!this._microvms) {
+      this._microvms = new MicroVMsClient(this.http)
     }
-    return this._sandboxes
+    return this._microvms
   }
 }

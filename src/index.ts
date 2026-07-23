@@ -1,7 +1,7 @@
 export { BridgesideClient } from "./client.js"
 export type { BridgesideClientOptions } from "./client.js"
 
-export { SandboxesClient } from "./resources/sandboxes.js"
+export { MicroVMsClient } from "./resources/microvms.js"
 
 export {
   BridgesideError,
@@ -11,18 +11,16 @@ export {
   PaymentRequiredError,
   RateLimitError,
   APIError,
-  SandboxProvisioningError,
+  MicroVMProvisioningError,
 } from "./errors.js"
 
 export type {
-  SandboxState,
-  SandboxListState,
+  MicroVMState,
+  MicroVMListState,
   ComputeResources,
-  AllowRule,
-  NetworkPolicy,
-  SandboxCreateRequest,
-  SandboxDetails,
-  SandboxCreateOptions,
+  MicroVMCreateRequest,
+  MicroVMDetails,
+  MicroVMCreateOptions,
 } from "./types.js"
 
 export {

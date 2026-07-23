@@ -53,9 +53,9 @@ export class APIError extends BridgesideError {
   }
 }
 
-export class SandboxProvisioningError extends BridgesideError {
+export class MicroVMProvisioningError extends BridgesideError {
   constructor(message: string) {
     super(message)
-    this.name = "SandboxProvisioningError"
+    this.name = "MicroVMProvisioningError"
   }
 }
