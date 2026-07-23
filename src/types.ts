@@ -8,41 +8,17 @@ export interface ComputeResources {
   timeoutMs?: number
 }
 
+export interface NetworkPolicy {
+  allowRules?: AllowRule[]
+}
+
 export interface AllowRule {
   domain?: string
   port?: number
 }
 
-export interface NetworkPolicy {
-  allowRules?: AllowRule[]
-}
-
-export interface OpencodeAgentConfig {
-  model: string
-  primaryRepository: RepositoryRef
-  createPullRequestOnCompletion?: boolean
-  referenceRepositories?: RepositoryRef[]
-  contextFiles?: ContextFile[]
-}
-
-export interface RepositoryRef {
-  url: string
-  branch?: string
-}
-
-export interface ContextFile {
-  path?: string
-  content?: string
-}
-
-export interface WorkloadSpec {
-  type: string
-  config: Record<string, unknown>
-}
-
 export interface SandboxCreateRequest {
   resources: ComputeResources
-  workload: WorkloadSpec
   env?: Record<string, string>
   networkPolicy?: NetworkPolicy
   bootstrapScript?: string
@@ -55,7 +31,6 @@ export interface SandboxDetails {
   createdAt: string
   resources: ComputeResources
   metadata?: Record<string, string>
-  workloadType: string
 }
 
 export interface SandboxCreateOptions {
