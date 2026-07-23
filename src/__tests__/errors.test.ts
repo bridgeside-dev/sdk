@@ -7,7 +7,7 @@ import {
   PaymentRequiredError,
   RateLimitError,
   APIError,
-  SandboxProvisioningError,
+  MicroVMProvisioningError,
 } from "../errors.js"
 
 describe("BridgesideError", () => {
@@ -91,12 +91,12 @@ describe("APIError", () => {
   })
 })
 
-describe("SandboxProvisioningError", () => {
+describe("MicroVMProvisioningError", () => {
   it("has no statusCode and correct message", () => {
-    const err = new SandboxProvisioningError("timed out")
+    const err = new MicroVMProvisioningError("timed out")
     expect(err.statusCode).toBeUndefined()
     expect(err.message).toBe("timed out")
-    expect(err.name).toBe("SandboxProvisioningError")
+    expect(err.name).toBe("MicroVMProvisioningError")
     expect(err).toBeInstanceOf(BridgesideError)
   })
 })

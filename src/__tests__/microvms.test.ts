@@ -1,22 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { BridgesideClient } from "../client.js"
-import { SandboxProvisioningError, NotFoundError } from "../errors.js"
-import type { SandboxDetails, SandboxCreateRequest } from "../types.js"
+import { MicroVMProvisioningError, NotFoundError } from "../errors.js"
+import type { MicroVMDetails, MicroVMCreateRequest } from "../types.js"
 
-function mockSandbox(overrides: Partial<SandboxDetails> = {}): SandboxDetails {
+function mockMicroVM(overrides: Partial<MicroVMDetails> = {}): MicroVMDetails {
   return {
-    sandboxId: "sbx-test123",
+    id: "mvm-test123",
     state: "PROVISIONING",
     createdAt: "2026-01-01T00:00:00Z",
-    resources: { cpu: 1, memoryMB: 2048 },
-    workloadType: "opencode-agent",
+    resources: { cpu: 1, memoryMB: 2048, timeoutMs: 300000 },
     ...overrides,
   }
 }
 
-const createRequest: SandboxCreateRequest = {
-  resources: { cpu: 1, memoryMB: 2048 },
-  workload: { type: "opencode-agent", config: { model: "test" } },
+const createRequest: MicroVMCreateRequest = {
+  resources: { cpu: 1, memoryMB: 2048, timeoutMs: 300000 },
 }
 
 describe("BridgesideClient", () => {
@@ -33,7 +31,7 @@ describe("BridgesideClient", () => {
   })
 })
 
-describe("SandboxesClient", () => {
+describe("MicroVMsClient", () => {
   const OriginalFetch = globalThis.fetch
   let fetchMock: ReturnType<typeof vi.fn>
 
@@ -75,23 +73,23 @@ describe("SandboxesClient", () => {
 
   describe("create", () => {
     it("returns immediately when wait is not set", async () => {
-      mockFetchSequence([{ body: mockSandbox({ state: "PROVISIONING" }) }])
+      mockFetchSequence([{ body: mockMicroVM({ state: "PROVISIONING" }) }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-      const result = await client.sandboxes.create(createRequest)
+      const result = await client.microvms.create(createRequest)
       expect(result.state).toBe("PROVISIONING")
       expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
     it("polls until RUNNING when wait=true", async () => {
       mockFetchSequence([
-        { body: mockSandbox({ state: "PROVISIONING" }) },
-        { body: mockSandbox({ state: "PROVISIONING" }) },
-        { body: mockSandbox({ state: "RUNNING" }) },
+        { body: mockMicroVM({ state: "PROVISIONING" }) },
+        { body: mockMicroVM({ state: "PROVISIONING" }) },
+        { body: mockMicroVM({ state: "RUNNING" }) },
       ])
 
       const client = new BridgesideClient({
@@ -100,7 +98,7 @@ describe("SandboxesClient", () => {
         baseUrl: "http://localhost",
       })
 
-      const promise = client.sandboxes.create(createRequest, { wait: true })
+      const promise = client.microvms.create(createRequest, { wait: true })
 
       // Advance past the poll intervals
       await vi.advanceTimersByTimeAsync(1_000)
@@ -111,10 +109,10 @@ describe("SandboxesClient", () => {
       expect(fetchMock).toHaveBeenCalledTimes(3)
     })
 
-    it("throws SandboxProvisioningError if sandbox TERMINATES during wait", async () => {
+    it("throws MicroVMProvisioningError if microVM TERMINATES during wait", async () => {
       mockFetchSequence([
-        { body: mockSandbox({ state: "PROVISIONING" }) },
-        { body: mockSandbox({ state: "TERMINATED" }) },
+        { body: mockMicroVM({ state: "PROVISIONING" }) },
+        { body: mockMicroVM({ state: "TERMINATED" }) },
       ])
 
       const client = new BridgesideClient({
@@ -123,15 +121,15 @@ describe("SandboxesClient", () => {
         baseUrl: "http://localhost",
       })
 
-      const promise = client.sandboxes.create(createRequest, { wait: true })
-      const assertion = expect(promise).rejects.toThrow(SandboxProvisioningError)
+      const promise = client.microvms.create(createRequest, { wait: true })
+      const assertion = expect(promise).rejects.toThrow(MicroVMProvisioningError)
       await vi.advanceTimersByTimeAsync(1_000)
       await assertion
     })
 
-    it("throws SandboxProvisioningError on timeout", async () => {
+    it("throws MicroVMProvisioningError on timeout", async () => {
       mockFetchSequence(
-        Array(100).fill({ body: mockSandbox({ state: "PROVISIONING" }) }),
+        Array(100).fill({ body: mockMicroVM({ state: "PROVISIONING" }) }),
       )
 
       const client = new BridgesideClient({
@@ -140,19 +138,19 @@ describe("SandboxesClient", () => {
         baseUrl: "http://localhost",
       })
 
-      const promise = client.sandboxes.create(createRequest, {
+      const promise = client.microvms.create(createRequest, {
         wait: true,
         timeoutMs: 500,
       })
 
-      const assertion = expect(promise).rejects.toThrow(SandboxProvisioningError)
+      const assertion = expect(promise).rejects.toThrow(MicroVMProvisioningError)
       await vi.advanceTimersByTimeAsync(10_000)
       await assertion
     })
 
-    it("throws NotFoundError if sandbox disappears during polling", async () => {
+    it("throws NotFoundError if microVM disappears during polling", async () => {
       mockFetchSequence([
-        { body: mockSandbox({ state: "PROVISIONING" }) },
+        { body: mockMicroVM({ state: "PROVISIONING" }) },
         { body: { message: "not found" }, init: { status: 404 } },
       ])
 
@@ -162,7 +160,7 @@ describe("SandboxesClient", () => {
         baseUrl: "http://localhost",
       })
 
-      const promise = client.sandboxes.create(createRequest, { wait: true })
+      const promise = client.microvms.create(createRequest, { wait: true })
       const assertion = expect(promise).rejects.toThrow(NotFoundError)
       await vi.advanceTimersByTimeAsync(1_000)
       await assertion
@@ -170,28 +168,28 @@ describe("SandboxesClient", () => {
   })
 
   describe("list", () => {
-    it("fetches sandboxes without filter", async () => {
-      const sandboxes = [mockSandbox(), mockSandbox({ sandboxId: "sbx-456" })]
-      mockFetchSequence([{ body: sandboxes }])
+    it("fetches microvms without filter", async () => {
+      const microvms = [mockMicroVM(), mockMicroVM({ id: "mvm-456" })]
+      mockFetchSequence([{ body: { data: microvms } }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-      const result = await client.sandboxes.list()
+      const result = await client.microvms.list()
       expect(result).toHaveLength(2)
     })
 
     it("passes state query parameter", async () => {
-      mockFetchSequence([{ body: [mockSandbox({ state: "RUNNING" })] }])
+      mockFetchSequence([{ body: { data: [mockMicroVM({ state: "RUNNING" })] } }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-      await client.sandboxes.list("RUNNING")
+      await client.microvms.list("RUNNING")
 
       const url = fetchMock.mock.calls[0][0] as string
       expect(url).toContain("state=RUNNING")
@@ -199,19 +197,19 @@ describe("SandboxesClient", () => {
   })
 
   describe("get", () => {
-    it("fetches a single sandbox", async () => {
-      mockFetchSequence([{ body: mockSandbox() }])
+    it("fetches a single microvm", async () => {
+      mockFetchSequence([{ body: mockMicroVM() }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-      const result = await client.sandboxes.get("sbx-test123")
-      expect(result.sandboxId).toBe("sbx-test123")
+      const result = await client.microvms.get("mvm-test123")
+      expect(result.id).toBe("mvm-test123")
 
       const url = fetchMock.mock.calls[0][0] as string
-      expect(url).toContain("/sandboxes/sbx-test123")
+      expect(url).toContain("/microvms/mvm-test123")
     })
   })
 
@@ -224,10 +222,10 @@ describe("SandboxesClient", () => {
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-      await client.sandboxes.terminate("sbx-test123")
+      await client.microvms.terminate("mvm-test123")
 
       const url = fetchMock.mock.calls[0][0] as string
-      expect(url).toContain("/sandboxes/sbx-test123")
+      expect(url).toContain("/microvms/mvm-test123")
       expect(fetchMock.mock.calls[0][1].method).toBe("DELETE")
     })
   })
