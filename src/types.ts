@@ -18,6 +18,7 @@ export interface MicroVMDetails {
   state: MicroVMState
   endpoint?: string
   createdAt: string
+  resources?: ComputeResources
 }
 
 export interface MicroVMCreateOptions {
