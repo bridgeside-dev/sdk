@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { BridgesideClient } from "../client.js"
-import { MicroVMProvisioningError, NotFoundError } from "../errors.js"
 import type { MicroVMDetails, MicroVMCreateRequest } from "../types.js"
 
 function mockMicroVM(overrides: Partial<MicroVMDetails> = {}): MicroVMDetails {
   return {
     id: "mvm-test123",
-    state: "PROVISIONING",
+    state: "RUNNING",
     createdAt: "2026-01-01T00:00:00Z",
     resources: { cpu: 1, memoryMB: 2048, timeoutMs: 300000 },
     ...overrides,
@@ -72,8 +71,8 @@ describe("MicroVMsClient", () => {
   }
 
   describe("create", () => {
-    it("returns immediately when wait is not set", async () => {
-      mockFetchSequence([{ body: mockMicroVM({ state: "PROVISIONING" }) }])
+    it("returns immediately with RUNNING state", async () => {
+      mockFetchSequence([{ body: mockMicroVM({ state: "RUNNING" }) }])
 
       const client = new BridgesideClient({
         apiKey: "k",
@@ -81,89 +80,32 @@ describe("MicroVMsClient", () => {
         baseUrl: "http://localhost",
       })
       const result = await client.microvms.create(createRequest)
-      expect(result.state).toBe("PROVISIONING")
+      expect(result.state).toBe("RUNNING")
       expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
-    it("polls until RUNNING when wait=true", async () => {
-      mockFetchSequence([
-        { body: mockMicroVM({ state: "PROVISIONING" }) },
-        { body: mockMicroVM({ state: "PROVISIONING" }) },
-        { body: mockMicroVM({ state: "RUNNING" }) },
-      ])
+    it("returns COMPLETE state when microVM completes", async () => {
+      mockFetchSequence([{ body: mockMicroVM({ state: "COMPLETE" }) }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-
-      const promise = client.microvms.create(createRequest, { wait: true })
-
-      // Advance past the poll intervals
-      await vi.advanceTimersByTimeAsync(1_000)
-      await vi.advanceTimersByTimeAsync(2_000)
-
-      const result = await promise
-      expect(result.state).toBe("RUNNING")
-      expect(fetchMock).toHaveBeenCalledTimes(3)
+      const result = await client.microvms.create(createRequest)
+      expect(result.state).toBe("COMPLETE")
     })
 
-    it("throws MicroVMProvisioningError if microVM TERMINATES during wait", async () => {
-      mockFetchSequence([
-        { body: mockMicroVM({ state: "PROVISIONING" }) },
-        { body: mockMicroVM({ state: "TERMINATED" }) },
-      ])
+    it("returns FAILED state when microVM fails", async () => {
+      mockFetchSequence([{ body: mockMicroVM({ state: "FAILED" }) }])
 
       const client = new BridgesideClient({
         apiKey: "k",
         apiSecret: "s",
         baseUrl: "http://localhost",
       })
-
-      const promise = client.microvms.create(createRequest, { wait: true })
-      const assertion = expect(promise).rejects.toThrow(MicroVMProvisioningError)
-      await vi.advanceTimersByTimeAsync(1_000)
-      await assertion
-    })
-
-    it("throws MicroVMProvisioningError on timeout", async () => {
-      mockFetchSequence(
-        Array(100).fill({ body: mockMicroVM({ state: "PROVISIONING" }) }),
-      )
-
-      const client = new BridgesideClient({
-        apiKey: "k",
-        apiSecret: "s",
-        baseUrl: "http://localhost",
-      })
-
-      const promise = client.microvms.create(createRequest, {
-        wait: true,
-        timeoutMs: 500,
-      })
-
-      const assertion = expect(promise).rejects.toThrow(MicroVMProvisioningError)
-      await vi.advanceTimersByTimeAsync(10_000)
-      await assertion
-    })
-
-    it("throws NotFoundError if microVM disappears during polling", async () => {
-      mockFetchSequence([
-        { body: mockMicroVM({ state: "PROVISIONING" }) },
-        { body: { message: "not found" }, init: { status: 404 } },
-      ])
-
-      const client = new BridgesideClient({
-        apiKey: "k",
-        apiSecret: "s",
-        baseUrl: "http://localhost",
-      })
-
-      const promise = client.microvms.create(createRequest, { wait: true })
-      const assertion = expect(promise).rejects.toThrow(NotFoundError)
-      await vi.advanceTimersByTimeAsync(1_000)
-      await assertion
+      const result = await client.microvms.create(createRequest)
+      expect(result.state).toBe("FAILED")
     })
   })
 
