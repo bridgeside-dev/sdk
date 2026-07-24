@@ -25,5 +25,4 @@ export type {
 
 export {
   DEFAULT_BASE_URL,
-  DEFAULT_WAIT_TIMEOUT_MS,
 } from "./types.js"
