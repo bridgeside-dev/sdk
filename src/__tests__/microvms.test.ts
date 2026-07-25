@@ -7,13 +7,12 @@ function mockMicroVM(overrides: Partial<MicroVMDetails> = {}): MicroVMDetails {
     id: "mvm-test123",
     state: "RUNNING",
     createdAt: "2026-01-01T00:00:00Z",
-    resources: { cpu: 1, memoryMB: 2048, timeoutMs: 300000 },
     ...overrides,
   }
 }
 
 const createRequest: MicroVMCreateRequest = {
-  resources: { cpu: 1, memoryMB: 2048, timeoutMs: 300000 },
+  resources: { timeoutMs: 300000 },
 }
 
 describe("BridgesideClient", () => {
@@ -107,6 +106,37 @@ describe("MicroVMsClient", () => {
       const result = await client.microvms.create(createRequest)
       expect(result.state).toBe("FAILED")
     })
+
+    it("uses options.timeoutMs over request.resources.timeoutMs", async () => {
+      mockFetchSequence([{ body: mockMicroVM() }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await client.microvms.create(
+        { resources: { timeoutMs: 300000 } },
+        { timeoutMs: 600000 },
+      )
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(body.resources.timeoutMs).toBe(600000)
+    })
+
+    it("sends request body when no options provided", async () => {
+      mockFetchSequence([{ body: mockMicroVM() }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await client.microvms.create({ resources: { timeoutMs: 300000 } })
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(body.resources.timeoutMs).toBe(300000)
+    })
   })
 
   describe("list", () => {
@@ -135,6 +165,25 @@ describe("MicroVMsClient", () => {
 
       const url = fetchMock.mock.calls[0][0] as string
       expect(url).toContain("state=RUNNING")
+    })
+
+    it("includes terminatedAt and reason when present", async () => {
+      const microvms = [
+        mockMicroVM({ id: "mvm-1", state: "COMPLETE", terminatedAt: "2026-01-01T01:00:00Z", reason: "TIMEOUT" }),
+        mockMicroVM({ id: "mvm-2", state: "RUNNING" }),
+      ]
+      mockFetchSequence([{ body: { data: microvms } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      const result = await client.microvms.list()
+      expect(result[0].terminatedAt).toBe("2026-01-01T01:00:00Z")
+      expect(result[0].reason).toBe("TIMEOUT")
+      expect(result[1].terminatedAt).toBeUndefined()
+      expect(result[1].reason).toBeUndefined()
     })
   })
 

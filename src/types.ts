@@ -2,15 +2,8 @@ export type MicroVMState = "RUNNING" | "COMPLETE" | "FAILED"
 
 export type MicroVMListState = "RUNNING"
 
-export interface ComputeResources {
-  cpu: number
-  memoryMB: number
-  timeoutMs: number
-}
-
 export interface MicroVMCreateRequest {
-  resources: ComputeResources
-  env?: Record<string, string>
+  resources: { timeoutMs: number }
 }
 
 export interface MicroVMDetails {
@@ -18,7 +11,8 @@ export interface MicroVMDetails {
   state: MicroVMState
   endpoint?: string
   createdAt: string
-  resources?: ComputeResources
+  terminatedAt?: string
+  reason?: string
 }
 
 export interface MicroVMCreateOptions {

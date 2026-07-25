@@ -17,7 +17,6 @@ export {
 export type {
   MicroVMState,
   MicroVMListState,
-  ComputeResources,
   MicroVMCreateRequest,
   MicroVMDetails,
   MicroVMCreateOptions,

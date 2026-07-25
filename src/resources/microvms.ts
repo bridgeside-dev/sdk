@@ -15,11 +15,14 @@ export class MicroVMsClient {
 
   async create(
     request: MicroVMCreateRequest,
-    _options?: MicroVMCreateOptions,
+    options?: MicroVMCreateOptions,
   ): Promise<MicroVMDetails> {
+    const body = options?.timeoutMs
+      ? { resources: { timeoutMs: options.timeoutMs } }
+      : request
     return this.http.post<MicroVMDetails>(
       "/microvms",
-      request,
+      body,
     )
   }
 
