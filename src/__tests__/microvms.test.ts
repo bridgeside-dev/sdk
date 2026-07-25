@@ -200,7 +200,7 @@ describe("MicroVMsClient", () => {
       expect(result.id).toBe("mvm-test123")
 
       const url = fetchMock.mock.calls[0][0] as string
-      expect(url).toContain("/microvms/mvm-test123")
+      expect(url).toContain("/v1/microvms/mvm-test123")
     })
   })
 
@@ -216,7 +216,7 @@ describe("MicroVMsClient", () => {
       await client.microvms.terminate("mvm-test123")
 
       const url = fetchMock.mock.calls[0][0] as string
-      expect(url).toContain("/microvms/mvm-test123")
+      expect(url).toContain("/v1/microvms/mvm-test123")
       expect(fetchMock.mock.calls[0][1].method).toBe("DELETE")
     })
   })

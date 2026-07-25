@@ -19,4 +19,4 @@ export interface MicroVMCreateOptions {
   timeoutMs?: number
 }
 
-export const DEFAULT_BASE_URL = "https://api.bridgeside.com/v1"
+export const DEFAULT_BASE_URL = "https://api.bridgeside.com"

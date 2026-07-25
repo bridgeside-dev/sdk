@@ -21,21 +21,21 @@ export class MicroVMsClient {
       ? { resources: { timeoutMs: options.timeoutMs } }
       : request
     return this.http.post<MicroVMDetails>(
-      "/microvms",
+      "/v1/microvms",
       body,
     )
   }
 
   async list(state?: MicroVMListState): Promise<MicroVMDetails[]> {
-    const path = state ? `/microvms?state=${encodeURIComponent(state)}` : "/microvms"
+    const path = state ? `/v1/microvms?state=${encodeURIComponent(state)}` : "/v1/microvms"
     return this.http.get<{ data: MicroVMDetails[] }>(path).then(r => r.data)
   }
 
   async get(microvmId: string): Promise<MicroVMDetails> {
-    return this.http.get<MicroVMDetails>(`/microvms/${microvmId}`)
+    return this.http.get<MicroVMDetails>(`/v1/microvms/${microvmId}`)
   }
 
   async terminate(microvmId: string): Promise<void> {
-    await this.http.delete(`/microvms/${microvmId}`)
+    await this.http.delete(`/v1/microvms/${microvmId}`)
   }
 }
