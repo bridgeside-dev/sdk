@@ -31,11 +31,11 @@ export class MicroVMsClient {
     return this.http.get<{ data: MicroVMDetails[] }>(path).then(r => r.data)
   }
 
-  async get(microvmId: string): Promise<MicroVMDetails> {
-    return this.http.get<MicroVMDetails>(`/v1/microvms/${microvmId}`)
+  async get(microvmID: string): Promise<MicroVMDetails> {
+    return this.http.get<MicroVMDetails>(`/v1/microvms/${microvmID}`)
   }
 
-  async terminate(microvmId: string): Promise<void> {
-    await this.http.delete(`/v1/microvms/${microvmId}`)
+  async terminate(microvmID: string): Promise<void> {
+    await this.http.delete(`/v1/microvms/${microvmID}`)
   }
 }
