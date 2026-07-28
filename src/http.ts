@@ -8,21 +8,38 @@ import {
   APIError,
 } from "./errors.js"
 
+export type AuthMode = "api-key" | "bearer"
+
 export class HttpRequester {
   private readonly baseUrl: string
-  private readonly apiKey: string
-  private readonly apiSecret: string
+  private readonly authMode: AuthMode
+  private readonly apiKey?: string
+  private readonly apiSecret?: string
+  private readonly bearerToken?: string
 
-  constructor(baseUrl: string, apiKey: string, apiSecret: string) {
-    if (!apiKey) {
-      throw new Error("apiKey is required")
-    }
-    if (!apiSecret) {
-      throw new Error("apiSecret is required")
+  constructor(
+    baseUrl: string,
+    authMode: AuthMode,
+    apiKeyOrToken: string,
+    apiSecret?: string,
+  ) {
+    if (authMode === "api-key") {
+      if (!apiKeyOrToken) {
+        throw new Error("apiKey is required")
+      }
+      if (!apiSecret) {
+        throw new Error("apiSecret is required")
+      }
+      this.apiKey = apiKeyOrToken
+      this.apiSecret = apiSecret
+    } else {
+      if (!apiKeyOrToken) {
+        throw new Error("bearerToken is required")
+      }
+      this.bearerToken = apiKeyOrToken
     }
     this.baseUrl = baseUrl.replace(/\/$/, "")
-    this.apiKey = apiKey
-    this.apiSecret = apiSecret
+    this.authMode = authMode
   }
 
   async get<T>(path: string): Promise<T> {
@@ -44,9 +61,14 @@ export class HttpRequester {
   ): Promise<T> {
     const url = `${this.baseUrl}${path}`
     const headers: Record<string, string> = {
-      "X-API-Key": this.apiKey,
-      "X-API-Secret": this.apiSecret,
       Accept: "application/json",
+    }
+
+    if (this.authMode === "api-key") {
+      headers["X-API-Key"] = this.apiKey!
+      headers["X-API-Secret"] = this.apiSecret!
+    } else {
+      headers["Authorization"] = `Bearer ${this.bearerToken}`
     }
 
     const init: RequestInit = { method, headers }

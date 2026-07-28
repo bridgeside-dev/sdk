@@ -1,6 +1,7 @@
 export { BridgesideClient } from "./client.js"
 export type { BridgesideClientOptions } from "./client.js"
 
+export { CredentialsClient } from "./resources/credentials.js"
 export { MicroVMsClient } from "./resources/microvms.js"
 
 export {
@@ -15,6 +16,8 @@ export {
 } from "./errors.js"
 
 export type {
+  CredentialMetadata,
+  GeneratedCredential,
   MicroVMState,
   MicroVMListState,
   MicroVMCreateRequest,

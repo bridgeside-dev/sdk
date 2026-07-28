@@ -39,14 +39,14 @@ describe("HttpRequester", () => {
   }
 
   it("throws if apiKey is empty", () => {
-    expect(() => new HttpRequester("http://localhost", "", "secret")).toThrow(
-      "apiKey is required",
-    )
+    expect(
+      () => new HttpRequester("http://localhost", "api-key", "", "secret"),
+    ).toThrow("apiKey is required")
   })
 
   it("throws if apiSecret is empty", () => {
     expect(
-      () => new HttpRequester("http://localhost", "key", ""),
+      () => new HttpRequester("http://localhost", "api-key", "key", ""),
     ).toThrow("apiSecret is required")
   })
 
@@ -60,7 +60,7 @@ describe("HttpRequester", () => {
       return jsonResponse({ ok: true })
     })
 
-    const http = new HttpRequester("http://localhost", "my-key", "my-secret")
+    const http = new HttpRequester("http://localhost", "api-key", "my-key", "my-secret")
     const result = await http.get("/test")
     expect(result).toEqual({ ok: true })
   })
@@ -73,6 +73,7 @@ describe("HttpRequester", () => {
 
     const http = new HttpRequester(
       "http://localhost/",
+      "api-key",
       "key",
       "secret",
     )
@@ -83,7 +84,7 @@ describe("HttpRequester", () => {
     it("returns parsed JSON", async () => {
       mockFetch(() => jsonResponse({ sandboxId: "sbx-123" }))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       const result = await http.get("/sandboxes/sbx-123")
       expect(result).toEqual({ sandboxId: "sbx-123" })
     })
@@ -97,7 +98,7 @@ describe("HttpRequester", () => {
         return jsonResponse({ id: "new" }, 201)
       })
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       const result = await http.post("/sandboxes", { cpu: 1 })
       expect(result).toEqual({ id: "new" })
     })
@@ -110,7 +111,7 @@ describe("HttpRequester", () => {
         return new Response(null, { status: 204 })
       })
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await http.delete("/sandboxes/sbx-123")
     })
   })
@@ -119,28 +120,28 @@ describe("HttpRequester", () => {
     it("throws BadRequestError on 400", async () => {
       mockFetch(() => jsonResponse({ message: "bad" }, 400))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await expect(http.get("/test")).rejects.toThrow(BadRequestError)
     })
 
     it("throws AuthenticationError on 401", async () => {
       mockFetch(() => jsonResponse({ message: "unauthorized" }, 401))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await expect(http.get("/test")).rejects.toThrow(AuthenticationError)
     })
 
     it("throws NotFoundError on 404", async () => {
       mockFetch(() => jsonResponse({ message: "gone" }, 404))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await expect(http.get("/test")).rejects.toThrow(NotFoundError)
     })
 
     it("throws PaymentRequiredError on 402", async () => {
       mockFetch(() => jsonResponse({ message: "billing cap exceeded" }, 402))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       try {
         await http.get("/test")
         expect.fail("should have thrown")
@@ -158,7 +159,7 @@ describe("HttpRequester", () => {
         return res
       })
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       try {
         await http.get("/test")
         expect.fail("should have thrown")
@@ -171,14 +172,14 @@ describe("HttpRequester", () => {
     it("throws APIError on unexpected status", async () => {
       mockFetch(() => jsonResponse({ message: "oops" }, 500))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await expect(http.get("/test")).rejects.toThrow(APIError)
     })
 
     it("uses statusText when body has no message", async () => {
       mockFetch(() => textResponse(502, "Bad Gateway"))
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       try {
         await http.get("/test")
         expect.fail("should have thrown")
@@ -193,7 +194,7 @@ describe("HttpRequester", () => {
         .fn()
         .mockRejectedValue(new Error("connection refused")) as typeof fetch
 
-      const http = new HttpRequester("http://localhost", "k", "s")
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await expect(http.get("/test")).rejects.toThrow("Network error")
     })
   })

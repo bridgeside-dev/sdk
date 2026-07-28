@@ -1,3 +1,15 @@
+export interface CredentialMetadata {
+  clientId: string
+  name: string
+  status: "ACTIVE" | "REVOKED"
+  createdAt: string
+}
+
+export interface GeneratedCredential {
+  clientId: string
+  clientSecret: string
+}
+
 export type MicroVMState = "RUNNING" | "COMPLETE" | "FAILED"
 
 export type MicroVMListState = "RUNNING"
