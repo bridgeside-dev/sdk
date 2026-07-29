@@ -220,4 +220,87 @@ describe("MicroVMsClient", () => {
       expect(fetchMock.mock.calls[0][1].method).toBe("DELETE")
     })
   })
+
+  describe("writeFile", () => {
+    it("sends PUT with encoded path and raw content", async () => {
+      mockFetchSequence([{ body: null, init: { status: 204 } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await client.microvms.writeFile("mvm-123", "/workspace/myfile.txt", "Hello, World!")
+
+      const url = fetchMock.mock.calls[0][0] as string
+      expect(url).toContain("/v1/microvms/mvm-123/files")
+      expect(url).toContain("path=%2Fworkspace%2Fmyfile.txt")
+      expect(fetchMock.mock.calls[0][1].method).toBe("PUT")
+      expect(fetchMock.mock.calls[0][1].body).toBe("Hello, World!")
+    })
+
+    it("encodes special characters in path", async () => {
+      mockFetchSequence([{ body: null, init: { status: 204 } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await client.microvms.writeFile("mvm-123", "/workspace/my file.txt", "data")
+
+      const url = fetchMock.mock.calls[0][0] as string
+      expect(url).toContain("path=%2Fworkspace%2Fmy%20file.txt")
+    })
+
+    it("propagates error from controlplane", async () => {
+      mockFetchSequence([{ body: { message: "MicroVM not found" }, init: { status: 404 } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await expect(
+        client.microvms.writeFile("mvm-missing", "/workspace/x.txt", "data"),
+      ).rejects.toThrow("MicroVM not found")
+    })
+  })
+
+  describe("readFile", () => {
+    it("sends GET and returns stream", async () => {
+      mockFetchSequence([{ body: "file content", init: { status: 200 } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      const stream = await client.microvms.readFile("mvm-123", "/workspace/myfile.txt")
+
+      const url = fetchMock.mock.calls[0][0] as string
+      expect(url).toContain("/v1/microvms/mvm-123/files")
+      expect(url).toContain("path=%2Fworkspace%2Fmyfile.txt")
+      expect(fetchMock.mock.calls[0][1].method).toBe("GET")
+      expect(stream).toBeDefined()
+    })
+  })
+
+  describe("deleteFile", () => {
+    it("sends DELETE with encoded path", async () => {
+      mockFetchSequence([{ body: null, init: { status: 204 } }])
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      await client.microvms.deleteFile("mvm-123", "/workspace/myfile.txt")
+
+      const url = fetchMock.mock.calls[0][0] as string
+      expect(url).toContain("/v1/microvms/mvm-123/files")
+      expect(url).toContain("path=%2Fworkspace%2Fmyfile.txt")
+      expect(fetchMock.mock.calls[0][1].method).toBe("DELETE")
+    })
+  })
 })

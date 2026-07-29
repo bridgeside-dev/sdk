@@ -54,6 +54,68 @@ export class HttpRequester {
     await this.request<void>("DELETE", path)
   }
 
+  async putRaw(path: string, body: BodyInit, contentType?: string): Promise<void> {
+    const url = `${this.baseUrl}${path}`
+    const headers: Record<string, string> = {
+      "Content-Type": contentType || "application/octet-stream",
+    }
+
+    if (this.authMode === "api-key") {
+      headers["X-API-Key"] = this.apiKey!
+      headers["X-API-Secret"] = this.apiSecret!
+    } else {
+      headers["Authorization"] = `Bearer ${this.bearerToken}`
+    }
+
+    const init: RequestInit = { method: "PUT", headers, body }
+
+    let response: Response
+    try {
+      response = await fetch(url, init)
+    } catch (err) {
+      throw new Error(`Network error: ${err}`)
+    }
+
+    if (response.ok) {
+      return
+    }
+
+    const message = await this.parseErrorMessage(response)
+    throw this.createError(response.status, message, response)
+  }
+
+  async getStream(path: string): Promise<ReadableStream<Uint8Array>> {
+    const url = `${this.baseUrl}${path}`
+    const headers: Record<string, string> = {}
+
+    if (this.authMode === "api-key") {
+      headers["X-API-Key"] = this.apiKey!
+      headers["X-API-Secret"] = this.apiSecret!
+    } else {
+      headers["Authorization"] = `Bearer ${this.bearerToken}`
+    }
+
+    const init: RequestInit = { method: "GET", headers }
+
+    let response: Response
+    try {
+      response = await fetch(url, init)
+    } catch (err) {
+      throw new Error(`Network error: ${err}`)
+    }
+
+    if (!response.ok) {
+      const message = await this.parseErrorMessage(response)
+      throw this.createError(response.status, message, response)
+    }
+
+    if (!response.body) {
+      throw new Error("Response body is empty")
+    }
+
+    return response.body
+  }
+
   private async request<T>(
     method: string,
     path: string,

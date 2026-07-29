@@ -20,6 +20,13 @@ function textResponse(status: number, statusText: string): Response {
   return new Response(null, { status, statusText })
 }
 
+function rawResponse(body: string, status = 200): Response {
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "application/octet-stream" },
+  })
+}
+
 describe("HttpRequester", () => {
   const OriginalFetch = globalThis.fetch
 
@@ -113,6 +120,103 @@ describe("HttpRequester", () => {
 
       const http = new HttpRequester("http://localhost", "api-key", "k", "s")
       await http.delete("/sandboxes/sbx-123")
+    })
+  })
+
+  describe("putRaw", () => {
+    it("sends raw body with PUT method", async () => {
+      mockFetch((url, init) => {
+        expect(init.method).toBe("PUT")
+        expect(init.body).toBe("file content")
+        expect(init.headers).toMatchObject({
+          "Content-Type": "application/octet-stream",
+          "X-API-Key": "k",
+          "X-API-Secret": "s",
+        })
+        return new Response(null, { status: 204 })
+      })
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await http.putRaw("/files", "file content")
+    })
+
+    it("uses provided content type", async () => {
+      mockFetch((_url, init) => {
+        expect(init.headers).toMatchObject({
+          "Content-Type": "text/plain",
+        })
+        return new Response(null, { status: 204 })
+      })
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await http.putRaw("/files", "hello", "text/plain")
+    })
+
+    it("accepts Uint8Array body", async () => {
+      mockFetch((_url, init) => {
+        expect(init.body).toBeInstanceOf(Uint8Array)
+        return new Response(null, { status: 204 })
+      })
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await http.putRaw("/files", new Uint8Array([72, 101, 108]))
+    })
+
+    it("accepts Blob body", async () => {
+      mockFetch((_url, init) => {
+        expect(init.body).toBeInstanceOf(Blob)
+        return new Response(null, { status: 204 })
+      })
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await http.putRaw("/files", new Blob(["blob data"]))
+    })
+
+    it("throws on error response", async () => {
+      mockFetch(() => jsonResponse({ message: "bad path" }, 400))
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await expect(http.putRaw("/files", "data")).rejects.toThrow(BadRequestError)
+    })
+
+    it("sends bearer auth when in bearer mode", async () => {
+      mockFetch((_url, init) => {
+        expect(init.headers).toMatchObject({
+          Authorization: "Bearer my-token",
+          "Content-Type": "application/octet-stream",
+        })
+        return new Response(null, { status: 204 })
+      })
+
+      const http = new HttpRequester("http://localhost", "bearer", "my-token")
+      await http.putRaw("/files", "data")
+    })
+  })
+
+  describe("getStream", () => {
+    it("returns response body as ReadableStream", async () => {
+      mockFetch(() => rawResponse("file content"))
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      const stream = await http.getStream("/files")
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const text = new TextDecoder().decode(value)
+      expect(text).toBe("file content")
+    })
+
+    it("throws on error response", async () => {
+      mockFetch(() => jsonResponse({ message: "not found" }, 404))
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await expect(http.getStream("/missing")).rejects.toThrow(NotFoundError)
+    })
+
+    it("throws Network error on fetch failure", async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error("connection refused")) as typeof fetch
+
+      const http = new HttpRequester("http://localhost", "api-key", "k", "s")
+      await expect(http.getStream("/files")).rejects.toThrow("Network error")
     })
   })
 

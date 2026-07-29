@@ -38,4 +38,26 @@ export class MicroVMsClient {
   async terminate(microvmID: string): Promise<void> {
     await this.http.delete(`/v1/microvms/${microvmID}`)
   }
+
+  async writeFile(microvmID: string, path: string, content: BodyInit): Promise<void> {
+    const encodedPath = encodeURIComponent(path)
+    await this.http.putRaw(
+      `/v1/microvms/${microvmID}/files?path=${encodedPath}`,
+      content,
+    )
+  }
+
+  async readFile(microvmID: string, path: string): Promise<ReadableStream<Uint8Array>> {
+    const encodedPath = encodeURIComponent(path)
+    return this.http.getStream(
+      `/v1/microvms/${microvmID}/files?path=${encodedPath}`,
+    )
+  }
+
+  async deleteFile(microvmID: string, path: string): Promise<void> {
+    const encodedPath = encodeURIComponent(path)
+    await this.http.delete(
+      `/v1/microvms/${microvmID}/files?path=${encodedPath}`,
+    )
+  }
 }
