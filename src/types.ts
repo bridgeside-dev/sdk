@@ -31,4 +31,18 @@ export interface MicroVMCreateOptions {
   timeoutMs?: number
 }
 
+export interface StreamWriter {
+  write(chunk: Uint8Array): void
+}
+
+export interface ExecRequest {
+  command: string
+  user?: string
+  cwd?: string
+  stdout?: StreamWriter
+  stderr?: StreamWriter
+  onExit?: (code: number) => void
+  onError?: (err: Error) => void
+}
+
 export const DEFAULT_BASE_URL = "https://api.bridgeside.com"

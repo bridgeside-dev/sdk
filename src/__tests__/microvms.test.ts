@@ -303,4 +303,159 @@ describe("MicroVMsClient", () => {
       expect(fetchMock.mock.calls[0][1].method).toBe("DELETE")
     })
   })
+
+  describe("exec", () => {
+    it("posts the command and streams stdout/stderr to writers", async () => {
+      const stdoutChunks: string[] = []
+      const stderrChunks: string[] = []
+      let exitCode: number | undefined
+
+      fetchMock.mockImplementation(async (url) => {
+        if (String(url).includes("/stream")) {
+          const events = [
+            `data: ${JSON.stringify({ type: "output", stream: "stdout", base64Content: btoa("hello") })}`,
+            `data: ${JSON.stringify({ type: "output", stream: "stderr", base64Content: btoa("oops") })}`,
+            `data: ${JSON.stringify({ type: "exit", code: 0 })}`,
+          ].join("\n\n") + "\n\n"
+          return new Response(events, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          })
+        }
+        return new Response(JSON.stringify({ execId: "exec-1" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        })
+      })
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      client.microvms.exec("mvm-1", {
+        command: "echo hi",
+        user: "alice",
+        cwd: "/workspace",
+        stdout: {
+          write: (chunk) => stdoutChunks.push(new TextDecoder().decode(chunk)),
+        },
+        stderr: {
+          write: (chunk) => stderrChunks.push(new TextDecoder().decode(chunk)),
+        },
+        onExit: (code) => {
+          exitCode = code
+        },
+      })
+
+      await vi.waitFor(() => expect(exitCode).toBe(0))
+      expect(stdoutChunks).toEqual(["hello"])
+      expect(stderrChunks).toEqual(["oops"])
+
+      const postBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(postBody).toEqual({ command: "echo hi", user: "alice", cwd: "/workspace" })
+      expect(String(fetchMock.mock.calls[0][0])).toContain("/v1/microvms/mvm-1/exec")
+      expect(String(fetchMock.mock.calls[1][0])).toContain(
+        "/v1/microvms/mvm-1/exec/exec-1/stream",
+      )
+    })
+
+    it("defaults user and cwd", async () => {
+      let exitCode: number | undefined
+
+      fetchMock.mockImplementation(async (url) => {
+        if (String(url).includes("/stream")) {
+          return new Response(
+            `data: ${JSON.stringify({ type: "exit", code: 0 })}\n\n`,
+            { status: 200 },
+          )
+        }
+        return new Response(JSON.stringify({ execId: "exec-2" }), { status: 201 })
+      })
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      client.microvms.exec("mvm-1", {
+        command: "ls",
+        onExit: (code) => {
+          exitCode = code
+        },
+      })
+
+      await vi.waitFor(() => expect(exitCode).toBe(0))
+      const postBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(postBody).toEqual({ command: "ls", user: "root", cwd: "/" })
+    })
+
+    it("buffers events split across stream chunks", async () => {
+      const stdoutChunks: string[] = []
+      let exitCode: number | undefined
+
+      fetchMock.mockImplementation(async (url) => {
+        if (String(url).includes("/stream")) {
+          const full =
+            `data: ${JSON.stringify({ type: "output", stream: "stdout", base64Content: btoa("partial") })}` +
+            "\n\n" +
+            `data: ${JSON.stringify({ type: "exit", code: 0 })}` +
+            "\n\n"
+          const encoded = new TextEncoder().encode(full)
+          const half = Math.ceil(encoded.length / 2)
+          const stream = new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(encoded.slice(0, half))
+              controller.enqueue(encoded.slice(half))
+              controller.close()
+            },
+          })
+          return new Response(stream as unknown as BodyInit, { status: 200 })
+        }
+        return new Response(JSON.stringify({ execId: "exec-3" }), { status: 201 })
+      })
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      client.microvms.exec("mvm-1", {
+        command: "cat /tmp/prompt.txt",
+        stdout: {
+          write: (chunk) => stdoutChunks.push(new TextDecoder().decode(chunk)),
+        },
+        onExit: (code) => {
+          exitCode = code
+        },
+      })
+
+      await vi.waitFor(() => expect(exitCode).toBe(0))
+      expect(stdoutChunks).toEqual(["partial"])
+    })
+
+    it("calls onError when the exec POST fails", async () => {
+      const errors: Error[] = []
+
+      fetchMock.mockImplementation(async () => {
+        return new Response(JSON.stringify({ message: "MicroVM not found" }), {
+          status: 404,
+        })
+      })
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      client.microvms.exec("mvm-missing", {
+        command: "ls",
+        onError: (err) => errors.push(err),
+      })
+
+      await vi.waitFor(() => expect(errors).toHaveLength(1))
+      expect(errors[0].message).toBe("MicroVM not found")
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+  })
 })

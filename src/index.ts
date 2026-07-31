@@ -23,6 +23,8 @@ export type {
   MicroVMCreateRequest,
   MicroVMDetails,
   MicroVMCreateOptions,
+  StreamWriter,
+  ExecRequest,
 } from "./types.js"
 
 export {
