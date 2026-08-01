@@ -83,13 +83,13 @@ export class MicroVMsClient {
   }
 
   exec(microvmID: string, request: ExecRequest): void {
-    const { command, user = "root", cwd = "/", stdout, stderr, onExit, onError } = request
+    const { command, user = "root", cwd = "/", pty = false, stdout, stderr, onExit, onError } = request
 
     void (async () => {
       try {
         const { execId } = await this.http.post<{ execId: string }>(
           `/v1/microvms/${microvmID}/exec`,
-          { command, user, cwd },
+          { command, user, cwd, pty },
         )
 
         const body = await this.http.getStream(

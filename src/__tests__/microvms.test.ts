@@ -353,7 +353,7 @@ describe("MicroVMsClient", () => {
       expect(stderrChunks).toEqual(["oops"])
 
       const postBody = JSON.parse(fetchMock.mock.calls[0][1].body)
-      expect(postBody).toEqual({ command: "echo hi", user: "alice", cwd: "/workspace" })
+      expect(postBody).toEqual({ command: "echo hi", user: "alice", cwd: "/workspace", pty: false })
       expect(String(fetchMock.mock.calls[0][0])).toContain("/v1/microvms/mvm-1/exec")
       expect(String(fetchMock.mock.calls[1][0])).toContain(
         "/v1/microvms/mvm-1/exec/exec-1/stream",
@@ -387,7 +387,38 @@ describe("MicroVMsClient", () => {
 
       await vi.waitFor(() => expect(exitCode).toBe(0))
       const postBody = JSON.parse(fetchMock.mock.calls[0][1].body)
-      expect(postBody).toEqual({ command: "ls", user: "root", cwd: "/" })
+      expect(postBody).toEqual({ command: "ls", user: "root", cwd: "/", pty: false })
+    })
+
+    it("passes pty: true through to the exec POST", async () => {
+      let exitCode: number | undefined
+
+      fetchMock.mockImplementation(async (url) => {
+        if (String(url).includes("/stream")) {
+          return new Response(
+            `data: ${JSON.stringify({ type: "exit", code: 0 })}\n\n`,
+            { status: 200 },
+          )
+        }
+        return new Response(JSON.stringify({ execId: "exec-pty" }), { status: 201 })
+      })
+
+      const client = new BridgesideClient({
+        apiKey: "k",
+        apiSecret: "s",
+        baseUrl: "http://localhost",
+      })
+      client.microvms.exec("mvm-1", {
+        command: "bash",
+        pty: true,
+        onExit: (code) => {
+          exitCode = code
+        },
+      })
+
+      await vi.waitFor(() => expect(exitCode).toBe(0))
+      const postBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(postBody).toEqual({ command: "bash", user: "root", cwd: "/", pty: true })
     })
 
     it("buffers events split across stream chunks", async () => {

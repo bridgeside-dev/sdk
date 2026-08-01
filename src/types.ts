@@ -39,6 +39,7 @@ export interface ExecRequest {
   command: string
   user?: string
   cwd?: string
+  pty?: boolean
   stdout?: StreamWriter
   stderr?: StreamWriter
   onExit?: (code: number) => void
